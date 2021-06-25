@@ -159,9 +159,9 @@ class VKGetUtils {
   }
 
   static Future<VKProxyList> getProxyList({
-    int sdk = 26,
-    String version = '8.0.0',
-    String device = 'Redmi Note 3',
+    int? sdk = 26,
+    String? version = '8.0.0',
+    String? device = 'Redmi Note 3',
   }) async {
     const port = 80;
 
