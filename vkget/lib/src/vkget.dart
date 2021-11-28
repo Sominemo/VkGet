@@ -236,7 +236,7 @@ class VKGet {
 
         final response = await VKGetUtils.request(
           client,
-          r.domain,
+          Uri.parse(r.domain),
           bodyFields: {
             'v': version,
             'access_token': token,
