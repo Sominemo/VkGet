@@ -13,6 +13,7 @@ class VKGet {
     this.domain = 'https://api.vk.com',
     this.oauthDomain = 'https://oauth.vk.com',
     this.userAgent = 'VKAndroidApp/6.29.1-7369',
+    this.errorDetectionKey = 'error',
     void Function(dynamic)? onError,
     Future<bool> Function()? onAccessProblems,
     Future<bool> Function()? onConnectionProblems,
@@ -41,7 +42,7 @@ class VKGet {
 
   final String version;
   String token;
-  final String domain, oauthDomain, userAgent;
+  final String domain, oauthDomain, userAgent, errorDetectionKey;
   final HttpClient client;
   final void Function(dynamic thrown) onError;
   Future<bool> Function() onAccessProblems = () => throw UnimplementedError();
@@ -298,7 +299,8 @@ class VKGet {
           }
         }
 
-        if (json is Map<String, dynamic> && json.containsKey('error')) {
+        if (json is Map<String, dynamic> &&
+            json.containsKey(errorDetectionKey)) {
           onRequestStateChange(
             VKGetTrace(
               state: VKGetTraceRequestState.error,
