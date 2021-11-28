@@ -18,6 +18,7 @@ class VKGet {
     Future<bool> Function()? onAccessProblems,
     Future<bool> Function()? onConnectionProblems,
     Future<String> Function(VKGetResponse)? onCaptcha,
+    Future<bool> Function(VKGetResponse)? onNeedValidation,
   })  : client = client ?? HttpClient(),
         onError = onError ??
             ((v) {
@@ -38,6 +39,11 @@ class VKGet {
             (() async {
               print('Network connection problems detected, but no handler set');
               return false;
+            }),
+        onNeedValidation = onNeedValidation ??
+            ((v) async {
+              print('Validation needed, but no handler set');
+              return false;
             });
 
   final String version;
@@ -49,6 +55,8 @@ class VKGet {
   Future<bool> Function() onConnectionProblems =
       () => throw UnimplementedError();
   Future<String> Function(VKGetResponse r) onCaptcha;
+  Future<bool> Function(VKGetResponse r) onNeedValidation;
+
   void Function(VKGetTrace) onRequestStateChange = (VKGetTrace trace) {};
 
   final List<_QueueElement> _queue =
@@ -280,6 +288,40 @@ class VKGet {
 
             try {
               captchaKey = await onCaptcha(result);
+            } catch (e) {
+              onRequestStateChange(
+                VKGetTrace(
+                  state: VKGetTraceRequestState.cancelled,
+                  type: r.isOauth
+                      ? VKGetTraceRequestType.oauth
+                      : VKGetTraceRequestType.api,
+                  target: r.method,
+                  payload: r.data,
+                  statePayload: e,
+                ),
+              );
+              rethrow;
+            }
+            queueLock = true;
+            continue;
+          } else if (json['error'] == 'need_validation') {
+            onRequestStateChange(
+              VKGetTrace(
+                state: VKGetTraceRequestState.delayed,
+                type: r.isOauth
+                    ? VKGetTraceRequestType.oauth
+                    : VKGetTraceRequestType.api,
+                target: r.method,
+                payload: r.data,
+                statePayload: json,
+              ),
+            );
+
+            try {
+              if (!(await onNeedValidation(result))) {
+                throw Exception(
+                    "Validation has been requested but wasn't handled");
+              }
             } catch (e) {
               onRequestStateChange(
                 VKGetTrace(
