@@ -236,10 +236,7 @@ class VKGet {
 
         final response = await VKGetUtils.request(
           client,
-          Uri.parse(r.domain).replace(pathSegments: [
-            if (r.domain == domain) 'method',
-            r.method,
-          ]),
+          r.domain,
           bodyFields: {
             'v': version,
             'access_token': token,
