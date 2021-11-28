@@ -234,9 +234,13 @@ class VKGet {
           ),
         );
 
+        final targetDomain = Uri.parse(r.domain);
+
         final response = await VKGetUtils.request(
           client,
-          Uri.parse(r.domain),
+          targetDomain.replace(
+            pathSegments: [...targetDomain.pathSegments, r.method],
+          ),
           bodyFields: {
             'v': version,
             'access_token': token,
