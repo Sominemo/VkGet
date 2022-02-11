@@ -63,9 +63,9 @@ class VKGetUtils {
       client.idleTimeout = timeout;
     }
 
+    HttpClientRequest? ongoingRequest;
     for (final proxy in proxies) {
       try {
-        HttpClientRequest? ongoingRequest;
         final pureRequest = Future<HttpClientResponse>(() async {
           if (proxy != null) {
             if (proxy.type == VKProxyType.httpTransparent) {
@@ -125,14 +125,18 @@ class VKGetUtils {
 
           return response;
         });
+
+        HttpClientResponse res;
+
         if (timeout != null) {
-          return await pureRequest.timeout(timeout, onTimeout: () {
+          res = await pureRequest.timeout(timeout, onTimeout: () {
             ongoingRequest?.close();
             throw TimeoutException('Connection probe was running for too long');
           });
         } else {
-          return await pureRequest;
+          res = await pureRequest;
         }
+        return res;
       } catch (e) {
         if (failedProxies != null) failedProxies.add(proxy);
         lastError = e;
