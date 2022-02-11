@@ -15,7 +15,7 @@ class VKProxyList {
 
 class VKGetUtils {
   static void proxify(HttpClient client, List<VKProxy> list) {
-    var pac =
+    final pac =
         list.where((element) => element.type == VKProxyType.httpRfc).join('; ');
 
     client.findProxy = (Uri uri) => pac;
@@ -25,7 +25,7 @@ class VKGetUtils {
       Set<VKProxyCertificate> certificates, HttpClient client) {
     if (certificates.isNotEmpty) {
       client.badCertificateCallback = (certificate, domain, port) {
-        var hash =
+        final hash =
             X509Utils.x509CertificateFromPem(certificate.pem).md5Thumbprint;
 
         return certificates.any((cert) {
@@ -50,70 +50,101 @@ class VKGetUtils {
     Map<String, dynamic>? bodyFields,
     Map<String, String>? headers,
     List<VKProxy?>? failedProxies,
+    Duration? timeout,
     void Function()? onConnectionEstablished,
   }) async {
     if (proxies.isEmpty) proxies.add(VKProxy('', 0, type: VKProxyType.none));
 
-    var origin = url.host;
-    var lastError;
+    final origin = url.host;
+    Object? lastError;
 
-    for (var proxy in proxies) {
+    if (timeout != null) {
+      client.connectionTimeout = timeout;
+      client.idleTimeout = timeout;
+    }
+
+    for (final proxy in proxies) {
       try {
-        if (proxy != null) {
-          if (proxy.type == VKProxyType.httpTransparent) {
-            url = url.replace(host: proxy.host);
+        HttpClientRequest? ongoingRequest;
+        final pureRequest = Future<HttpClientResponse>(() async {
+          if (proxy != null) {
+            if (proxy.type == VKProxyType.httpTransparent) {
+              url = url.replace(host: proxy.host);
+            }
           }
-        }
 
-        var request = await client.openUrl(
-          method,
-          url,
-        );
+          final request = await client.openUrl(
+            method,
+            url,
+          );
+          ongoingRequest = request;
 
-        if (proxy != null && proxy.type == VKProxyType.httpTransparent) {
-          request.headers.add('Host', origin, preserveHeaderCase: true);
-        }
+          if (proxy != null && proxy.type == VKProxyType.httpTransparent) {
+            request.headers.add('Host', origin, preserveHeaderCase: true);
+          }
 
-        if (headers != null) {
-          headers.forEach((key, value) {
-            request.headers.add(key, value);
+          if (headers != null) {
+            headers.forEach((key, value) {
+              request.headers.add(key, value);
+            });
+          }
+
+          if (bodyFields != null) {
+            request.headers
+                .add('Content-Type', 'application/x-www-form-urlencoded');
+
+            final queryBody = <String>[];
+            bodyFields.forEach((key, dynamic value) {
+              queryBody.add(
+                Uri.encodeQueryComponent(key) +
+                    '=' +
+                    Uri.encodeQueryComponent(value.toString()),
+              );
+            });
+
+            body = queryBody.join('&');
+          }
+
+          if (body != null) {
+            final encodedBody = utf8.encode(body!);
+            request.headers
+                .set('Content-Length', encodedBody.length.toString());
+            request.write(body);
+          }
+
+          if (onConnectionEstablished != null) {
+            Timer.run(onConnectionEstablished);
+          }
+
+          final response = await request.close();
+
+          if (timeout != null) {
+            client.connectionTimeout = null;
+            client.idleTimeout = Duration(seconds: 15);
+          }
+
+          return response;
+        });
+        if (timeout != null) {
+          return await pureRequest.timeout(timeout, onTimeout: () {
+            ongoingRequest?.close();
+            throw TimeoutException('Connection probe was running for too long');
           });
+        } else {
+          return await pureRequest;
         }
-
-        if (bodyFields != null) {
-          request.headers
-              .add('Content-Type', 'application/x-www-form-urlencoded');
-
-          final queryBody = <String>[];
-          bodyFields.forEach((key, value) {
-            queryBody.add(
-              Uri.encodeQueryComponent(key) +
-                  '=' +
-                  Uri.encodeQueryComponent(value.toString()),
-            );
-          });
-
-          body = queryBody.join('&');
-        }
-
-        if (body != null) {
-          final encodedBody = utf8.encode(body);
-          request.headers.set('Content-Length', encodedBody.length.toString());
-          request.write(body);
-        }
-
-        if (onConnectionEstablished != null) Timer.run(onConnectionEstablished);
-
-        var response = await request.close();
-
-        return response;
       } catch (e) {
         if (failedProxies != null) failedProxies.add(proxy);
         lastError = e;
       }
     }
 
-    throw lastError;
+    if (timeout != null) {
+      client.connectionTimeout = null;
+      client.idleTimeout = Duration(seconds: 15);
+    }
+
+    throw lastError!;
   }
 
   static Future<Duration> pingVK(
@@ -124,21 +155,20 @@ class VKGetUtils {
     const pingHash = 'e8a80fae4cf9dc69cd12a35e7eadb8f8';
     const target = 'https://vk.com/ping.txt';
 
-    var start = DateTime.now();
+    final start = DateTime.now();
 
-    if (timeout != null) client.connectionTimeout = timeout;
-
-    var request = await VKGetUtils.request(
+    final request = await VKGetUtils.request(
       client,
       Uri.parse(target),
       proxies: {proxy},
       method: 'GET',
+      timeout: timeout,
     );
-    var result = await responseToString(request);
+    final result = await responseToString(request);
 
     if (_generateMd5(result.trim()) != pingHash) {
       throw Exception(
-          "Ping hash doesn\'t match\n\n${result.trim()}\n\n${_generateMd5(result.trim())} != $pingHash");
+          "Ping hash doesn't match\n\n${result.trim()}\n\n${_generateMd5(result.trim())} != $pingHash");
     }
 
     return DateTime.now().difference(start);
@@ -147,7 +177,7 @@ class VKGetUtils {
   static Future<List<int>> responseToIntList(
       HttpClientResponse response) async {
     final responseData = <int>[];
-    await for (var i in response) {
+    await for (final i in response) {
       responseData.addAll(i);
     }
     return responseData;
@@ -174,9 +204,9 @@ class VKGetUtils {
   "platformVersion": "$sdk",
   "appInstanceId": "$fid",
   "packageName": "com.vkontakte.android",
-  "appVersion": "6.11",
+  "appVersion": "7.12",
   "countryCode": "US",
-  "sdkVersion": "19.1.4",
+  "sdkVersion": "21.0.1",
   "analyticsUserProperties": {},
   "appId": "1:841415684880:android:632f429381141121",
   "languageCode": "en-US",
@@ -195,8 +225,8 @@ class VKGetUtils {
       'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android $version; $device)',
     };
 
-    var client = HttpClient();
-    var request = await client.postUrl(Uri.parse(url));
+    final client = HttpClient();
+    final request = await client.postUrl(Uri.parse(url));
 
     headers.forEach((key, value) {
       request.headers.add(key, value);
@@ -206,19 +236,21 @@ class VKGetUtils {
 
     final response = await request.close();
     final responseData = <int>[];
-    await for (var i in response) {
+    await for (final i in response) {
       responseData.addAll(i);
     }
 
     final result = utf8.decode(responseData);
 
-    final Map<String, dynamic> json = jsonDecode(result.toString());
+    final Map<String, dynamic> json =
+        jsonDecode(result.toString()) as Map<String, dynamic>;
 
     final Map<String, dynamic> proxyRaw =
-        jsonDecode(json['entries']['config_network_proxy'])['data'];
+        jsonDecode(json['entries']['config_network_proxy'] as String)['data']
+            as Map<String, dynamic>;
 
-    final List<String> ips = proxyRaw['ip'].cast<String>(),
-        weight = proxyRaw['weight'].cast<String>();
+    final List<String> ips = (proxyRaw['ip'] as List<dynamic>).cast<String>(),
+        weight = (proxyRaw['weight'] as List<dynamic>).cast<String>();
 
     final paired = <String, int>{};
 
@@ -233,20 +265,22 @@ class VKGetUtils {
       return varB - varA;
     });
 
-    var proxy = ips
+    final proxy = ips
         .map((p) => VKProxy(p, port, type: VKProxyType.httpTransparent))
         .toSet();
 
     var certs = <VKProxyCertificate>{};
     try {
       final Map<String, dynamic> certificatesRaw =
-          jsonDecode(json['entries']['config_network_proxy_certs']);
-      final List<dynamic> certsList = certificatesRaw['certs'];
+          jsonDecode(json['entries']['config_network_proxy_certs'] as String)
+              as Map<String, dynamic>;
+      final List<dynamic> certsList = certificatesRaw['certs'] as List<dynamic>;
 
       certs = certsList
-          .map((element) => VKProxyCertificate(
+          .map((dynamic element) => VKProxyCertificate(
                 VKProxyCertificateType.pem,
-                X509Utils.x509CertificateFromPem(element['cert']).md5Thumbprint,
+                X509Utils.x509CertificateFromPem(element['cert'] as String)
+                    .md5Thumbprint,
               ))
           .toSet();
     } catch (e) {
@@ -260,7 +294,7 @@ class VKGetUtils {
     String host = 'http://1.1.1.1:53',
     Duration timeout = const Duration(seconds: 10),
   }) async {
-    var options = Uri.parse(host);
+    final options = Uri.parse(host);
     Socket? sock;
     try {
       sock = await Socket.connect(
@@ -276,12 +310,12 @@ class VKGetUtils {
     }
   }
 
-  static dynamic parseJson(s) => jsonDecode(s);
+  static dynamic parseJson(String s) => jsonDecode(s);
 }
 
 String _randomString(int length) {
   const chars = 'AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwXxYyZz';
-  var rnd = Random();
+  final rnd = Random();
 
   return String.fromCharCodes(
     Iterable.generate(

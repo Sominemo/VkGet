@@ -88,6 +88,18 @@ class VKGetRequest {
       data.hashCode * 32 +
       domain.hashCode * 33 +
       (isOauth ? 1 : 0) * 34;
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! VKGetRequest) return false;
+
+    if (method != other.method) return false;
+    if (data != other.data) return false;
+    if (domain != other.domain) return false;
+    if (isOauth != other.isOauth) return false;
+
+    return true;
+  }
 }
 
 class VKGetResponse {

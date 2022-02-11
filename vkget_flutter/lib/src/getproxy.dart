@@ -1,4 +1,4 @@
-import 'package:device_info/device_info.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:vkget/vkget.dart';
 
 class VKGetUtilsFlutter extends VKGetUtils {

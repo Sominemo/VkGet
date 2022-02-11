@@ -14,7 +14,7 @@ class VKGetTokenData {
   String toString() => '[TOKEN $token for ID$userId, expires $expireDate]';
 }
 
-Future main() async {
+Future<void> main() async {
   print(await getTokenInteractive());
 }
 
@@ -24,12 +24,12 @@ Future<void> initConnection(VKGet vk) async {
   try {
     ping = await VKGetUtils.pingVK(vk.client, timeout: Duration(seconds: 1));
   } catch (e) {
-    var r = await VKGetUtils.getProxyList();
+    final r = await VKGetUtils.getProxyList();
 
     VKGetUtils.trustify(r.certificates, vk.client);
     vk.proxies = r.proxy;
-    var lastError;
-    for (var proxy in r.proxy) {
+    Object? lastError;
+    for (final proxy in r.proxy) {
       try {
         ping = await VKGetUtils.pingVK(vk.client,
             proxy: proxy, timeout: Duration(seconds: 1));
@@ -40,7 +40,7 @@ Future<void> initConnection(VKGet vk) async {
     }
     if (ping == null) {
       print("Couldn't find a working proxy");
-      if (lastError) throw lastError;
+      if (lastError != null) throw lastError;
       exit(1);
     }
   }
@@ -69,14 +69,14 @@ Future<VKGetTokenData> getTokenInteractive({String version = '5.130'}) async {
   } catch (e) {
     stdout.writeln('[*] Failed to connect to VK. Fetching proxies...');
 
-    var r = await VKGetUtils.getProxyList();
+    final r = await VKGetUtils.getProxyList();
 
     VKGetUtils.trustify(r.certificates, vk.client);
     vk.proxies = r.proxy;
     stdout.writeln('[*] Testing proxies...');
-    var lastError;
+    Object? lastError;
     var connectionTries = 1;
-    for (var proxy in r.proxy) {
+    for (final proxy in r.proxy) {
       try {
         ping = await VKGetUtils.pingVK(vk.client,
             proxy: proxy, timeout: Duration(seconds: 1));
@@ -89,7 +89,7 @@ Future<VKGetTokenData> getTokenInteractive({String version = '5.130'}) async {
     if (ping == null) {
       stdout
           .writeln('[!] Failed to connect to VK. Tries made: $connectionTries');
-      if (lastError) throw lastError;
+      if (lastError != null) throw lastError;
       exit(1);
     }
     if (connectionTries > 0) {
@@ -135,15 +135,16 @@ Future<VKGetTokenData> loginFlow(
   try {
     final oauth = await vk.call('token', requestBody, oauth: true);
 
-    Map<String, dynamic> oauthRes = oauth.asJson;
+    final Map<String, dynamic> oauthRes = oauth.asJson as Map<String, dynamic>;
 
-    String? accessToken = oauthRes['access_token'];
+    final String accessToken = oauthRes['access_token'] as String;
     if (oauthRes['access_token'] == null) throw TypeError();
 
     return VKGetTokenData(
-      accessToken!,
-      oauthRes['user_id'] ?? 0,
-      DateTime.fromMillisecondsSinceEpoch(oauthRes['expires_in'] ?? 0 * 100),
+      accessToken,
+      oauthRes['user_id'] as int? ?? 0,
+      DateTime.fromMillisecondsSinceEpoch(
+          oauthRes['expires_in'] as int? ?? 0 * 100),
     );
   } catch (e) {
     if (e is! Map<String, dynamic> || e['error'] != 'need_validation') rethrow;
@@ -163,7 +164,7 @@ Future<VKGetTokenData> loginFlow(
           '[?] VK asks you to confirm your account in browser: ${e['redirect_uri']}\nAfter submitting, copy the URL and paste it here:');
       final input = stdin.readLineSync();
       if (input == null) throw TypeError();
-      var userToken;
+      String userToken;
       try {
         final parsedLink = Uri.parse(input);
         final accessTokenParam =
@@ -178,22 +179,23 @@ Future<VKGetTokenData> loginFlow(
       }
 
       vk.token = userToken;
-      final checkTokenCall = (await vk.call('users.get', {})).asJson;
+      final dynamic checkTokenCall =
+          (await vk.call('users.get', <String, String>{})).asJson;
       vk.token = '';
 
       if (checkTokenCall is! Map<String, dynamic>) throw TypeError();
-      var resCall = checkTokenCall;
+      final resCall = checkTokenCall;
 
       return VKGetTokenData(
         userToken,
-        resCall['response'][0]['id'] ?? 0,
+        resCall['response'][0]['id'] as int? ?? 0,
         DateTime.fromMillisecondsSinceEpoch(0),
       );
     }
 
     print("Type 'sms' to receive the code in SMS or 'voice' to get a call");
 
-    var input;
+    String? input;
     do {
       input = stdin.readLineSync();
 
@@ -205,12 +207,12 @@ Future<VKGetTokenData> loginFlow(
             Duration(
               seconds: (await vk.call(
                 'auth.validatePhone',
-                {
-                  'sid': e['validation_sid'],
+                <String, String>{
+                  'sid': e['validation_sid'] as String,
                   if (input == 'voice') 'voice': '1',
                 },
               ))
-                  .asJson['delay'],
+                  .asJson['delay'] as int,
             ),
           );
           print('[?] VK sent you a 2FA code in SMS on ${e['phone_mask']}');

@@ -21,7 +21,7 @@ class VKGet {
     Future<bool> Function(VKGetResponse)? onNeedValidation,
   })  : client = client ?? HttpClient(),
         onError = onError ??
-            ((v) {
+            ((dynamic v) {
               print(v);
               throw UnimplementedError('Error resolver not set');
             }),
@@ -110,11 +110,11 @@ class VKGet {
         state: VKGetTraceRequestState.active,
         type: VKGetTraceRequestType.fetch,
         target: url.toString(),
-        payload: {},
+        payload: <String, String>{},
       ),
     );
 
-    final result;
+    final Future<HttpClientResponse> result;
 
     try {
       result = VKGetUtils.request(
@@ -133,13 +133,13 @@ class VKGet {
           state: VKGetTraceRequestState.done,
           type: VKGetTraceRequestType.fetch,
           target: url.toString(),
-          payload: {},
+          payload: <String, String>{},
         ),
       );
 
-      failedProxies.forEach((element) {
+      for (final element in failedProxies) {
         proxies.remove(element);
-      });
+      }
 
       return result;
     } catch (e) {
@@ -148,7 +148,7 @@ class VKGet {
           state: VKGetTraceRequestState.error,
           type: VKGetTraceRequestType.fetch,
           target: url.toString(),
-          payload: {},
+          payload: <String, String>{},
           statePayload: e,
         ),
       );
@@ -250,7 +250,7 @@ class VKGet {
           targetDomain.replace(
             pathSegments: [...targetDomain.pathSegments, r.method],
           ),
-          bodyFields: {
+          bodyFields: <String, dynamic>{
             'v': version,
             'access_token': token,
             if (lastCaptchaSid != null) 'captcha_sid': lastCaptchaSid,
@@ -268,11 +268,11 @@ class VKGet {
         final result = VKGetResponse(
             response, await VKGetUtils.responseToString(response));
 
-        final json = result.asJson;
+        final dynamic json = result.asJson;
 
         if (json is Map<String, dynamic>) {
           if (json['error'] == 'need_captcha') {
-            lastCaptchaSid = json['captcha_sid'];
+            lastCaptchaSid = json['captcha_sid'] as String;
 
             onRequestStateChange(
               VKGetTrace(
@@ -429,9 +429,9 @@ class VKGet {
           }
         }
 
-        failedProxies.forEach((element) {
+        for (final element in failedProxies) {
           proxies.remove(element);
-        });
+        }
       } while (queueLock);
     } catch (e) {
       onRequestStateChange(
@@ -511,7 +511,7 @@ class VKGetTrace {
       s += '\n$statePayload';
     }
 
-    var r = response;
+    final r = response;
     if (r != null) {
       try {
         s += jsonEncode(r.asJson);
