@@ -114,10 +114,10 @@ class VKGet {
       ),
     );
 
-    final Future<HttpClientResponse> result;
+    final HttpClientResponse result;
 
     try {
-      result = VKGetUtils.request(
+      result = await VKGetUtils.request(
         client,
         url,
         method: method,
