@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 enum VKProxyType { httpRfc, httpTransparent, none }
+
 enum VKProxyCertificateType { pem, none, free }
 
 class VKProxyCertificate {
@@ -13,7 +14,7 @@ class VKProxyCertificate {
 
   @override
   String toString() {
-    return type.toString() + ' ' + (value ?? '');
+    return '$type ${value ?? ''}';
   }
 
   @override
@@ -43,11 +44,7 @@ class VKProxy {
   String toString() {
     if (type == VKProxyType.none) return 'DIRECT';
 
-    return 'PROXY ' +
-        (username != null
-            ? username! + (password != null ? ':$password' : '') + '@'
-            : '') +
-        '$host:$port';
+    return 'PROXY ${username != null ? '${username!}${password != null ? ':$password' : ''}@' : ''}$host:$port';
   }
 
   @override

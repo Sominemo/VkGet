@@ -452,6 +452,7 @@ class VKGet {
 }
 
 enum VKGetTraceRequestState { queued, active, done, error, cancelled, delayed }
+
 enum VKGetTraceRequestType { api, oauth, fetch }
 
 class VKGetTrace {
@@ -535,7 +536,7 @@ class VKGetTrace {
 }
 
 class _QueueElement {
-  _QueueElement(this.time, {this.isBusy = false});
+  _QueueElement(this.time);
   final DateTime time;
-  bool isBusy;
+  bool isBusy = false;
 }

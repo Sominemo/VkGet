@@ -96,9 +96,7 @@ class VKGetUtils {
             final queryBody = <String>[];
             bodyFields.forEach((key, dynamic value) {
               queryBody.add(
-                Uri.encodeQueryComponent(key) +
-                    '=' +
-                    Uri.encodeQueryComponent(value.toString()),
+                '${Uri.encodeQueryComponent(key)}=${Uri.encodeQueryComponent(value.toString())}',
               );
             });
 
