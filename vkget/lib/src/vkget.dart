@@ -110,7 +110,7 @@ class VKGet {
         state: VKGetTraceRequestState.active,
         type: VKGetTraceRequestType.fetch,
         target: url.toString(),
-        payload: <String, String>{},
+        payload: bodyFields ?? body,
       ),
     );
 
@@ -133,7 +133,7 @@ class VKGet {
           state: VKGetTraceRequestState.done,
           type: VKGetTraceRequestType.fetch,
           target: url.toString(),
-          payload: <String, String>{},
+          payload: bodyFields ?? body,
         ),
       );
 
@@ -148,7 +148,7 @@ class VKGet {
           state: VKGetTraceRequestState.error,
           type: VKGetTraceRequestType.fetch,
           target: url.toString(),
-          payload: <String, String>{},
+          payload: bodyFields ?? body,
           statePayload: e,
         ),
       );
@@ -245,18 +245,20 @@ class VKGet {
 
         final targetDomain = Uri.parse(r.domain);
 
+        final body = <String, dynamic>{
+          'v': version,
+          'access_token': token,
+          if (lastCaptchaSid != null) 'captcha_sid': lastCaptchaSid,
+          if (lastCaptchaSid != null) 'captcha_key': captchaKey,
+          ...r.data,
+        };
+
         final response = await VKGetUtils.request(
           client,
           targetDomain.replace(
             pathSegments: [...targetDomain.pathSegments, r.method],
           ),
-          bodyFields: <String, dynamic>{
-            'v': version,
-            'access_token': token,
-            if (lastCaptchaSid != null) 'captcha_sid': lastCaptchaSid,
-            if (lastCaptchaSid != null) 'captcha_key': captchaKey,
-            ...r.data,
-          },
+          bodyFields: body,
           onConnectionEstablished: () {
             _queue[qIndex] = _QueueElement(DateTime.now());
           },
@@ -281,7 +283,7 @@ class VKGet {
                     ? VKGetTraceRequestType.oauth
                     : VKGetTraceRequestType.api,
                 target: r.method,
-                payload: r.data,
+                payload: body,
                 statePayload: json,
               ),
             );
@@ -296,7 +298,7 @@ class VKGet {
                       ? VKGetTraceRequestType.oauth
                       : VKGetTraceRequestType.api,
                   target: r.method,
-                  payload: r.data,
+                  payload: body,
                   statePayload: e,
                 ),
               );
@@ -312,7 +314,7 @@ class VKGet {
                     ? VKGetTraceRequestType.oauth
                     : VKGetTraceRequestType.api,
                 target: r.method,
-                payload: r.data,
+                payload: body,
                 statePayload: json,
               ),
             );
@@ -330,7 +332,7 @@ class VKGet {
                       ? VKGetTraceRequestType.oauth
                       : VKGetTraceRequestType.api,
                   target: r.method,
-                  payload: r.data,
+                  payload: body,
                   statePayload: e,
                 ),
               );
@@ -350,7 +352,7 @@ class VKGet {
                   ? VKGetTraceRequestType.oauth
                   : VKGetTraceRequestType.api,
               target: r.method,
-              payload: r.data,
+              payload: body,
               statePayload: json,
             ),
           );
@@ -363,7 +365,7 @@ class VKGet {
                   ? VKGetTraceRequestType.oauth
                   : VKGetTraceRequestType.api,
               target: r.method,
-              payload: r.data,
+              payload: body,
               response: result,
             ),
           );
@@ -382,7 +384,7 @@ class VKGet {
                       ? VKGetTraceRequestType.oauth
                       : VKGetTraceRequestType.api,
                   target: r.method,
-                  payload: r.data,
+                  payload: body,
                   statePayload: 'Access Problems',
                 ),
               );
@@ -400,7 +402,7 @@ class VKGet {
                     ? VKGetTraceRequestType.oauth
                     : VKGetTraceRequestType.api,
                 target: r.method,
-                payload: r.data,
+                payload: body,
                 statePayload: 'No Internet',
               ),
             );
@@ -420,7 +422,7 @@ class VKGet {
                       ? VKGetTraceRequestType.oauth
                       : VKGetTraceRequestType.api,
                   target: r.method,
-                  payload: r.data,
+                  payload: body,
                   statePayload: e,
                 ),
               );
@@ -462,7 +464,7 @@ class VKGetTrace {
   final VKGetResponse? response;
   final Object? statePayload;
   final String target;
-  final Object payload;
+  final Object? payload;
 
   @override
   String toString() {
@@ -506,7 +508,12 @@ class VKGetTrace {
     }
 
     s += '\n';
-    s += '- $target\n- ${jsonEncode(payload)}';
+    s += '- $target';
+
+    if (payload != null) {
+      s += '\n';
+      s += '- ${jsonEncode(payload)}';
+    }
 
     if (statePayload != null) {
       s += '\n$statePayload';
