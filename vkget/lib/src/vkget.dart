@@ -522,6 +522,10 @@ class VKGetTrace {
 
     final r = response;
     if (r != null) {
+      s += '\n';
+      s += '- ${r.response.statusCode} ${r.response.headers.contentType}';
+
+      s += '\n';
       try {
         s += jsonEncode(r.asJson);
       } catch (e) {
