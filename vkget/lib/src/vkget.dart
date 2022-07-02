@@ -134,6 +134,7 @@ class VKGet {
           type: VKGetTraceRequestType.fetch,
           target: url.toString(),
           payload: bodyFields ?? body,
+          response: VKGetResponse(result, ''),
         ),
       );
 
@@ -540,6 +541,31 @@ class VKGetTrace {
     required this.payload,
     this.statePayload,
   });
+
+  @override
+  int get hashCode {
+    return state.hashCode ^
+        type.hashCode ^
+        (request?.hashCode ?? 0) ^
+        (response?.hashCode ?? 0) ^
+        target.hashCode ^
+        payload.hashCode ^
+        (statePayload?.hashCode ?? 0);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! VKGetTrace) return false;
+
+    return state == other.state &&
+        type == other.type &&
+        request == other.request &&
+        response == other.response &&
+        target == other.target &&
+        payload == other.payload &&
+        statePayload == other.statePayload;
+  }
 }
 
 class _QueueElement {
