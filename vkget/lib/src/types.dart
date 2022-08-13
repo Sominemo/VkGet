@@ -106,3 +106,10 @@ class VKGetResponse {
   final String body;
   dynamic get asJson => jsonDecode(body);
 }
+
+class VKGetValidationResult {
+  VKGetValidationResult(this.isValid, {this.code});
+
+  final bool isValid;
+  final String? code;
+}

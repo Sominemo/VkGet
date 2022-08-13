@@ -18,7 +18,7 @@ class VKGet {
     Future<bool> Function()? onAccessProblems,
     Future<bool> Function()? onConnectionProblems,
     Future<String> Function(VKGetResponse)? onCaptcha,
-    Future<bool> Function(VKGetResponse)? onNeedValidation,
+    Future<VKGetValidationResult> Function(VKGetResponse)? onNeedValidation,
   })  : client = client ?? HttpClient(),
         onError = onError ??
             ((dynamic v) {
@@ -43,7 +43,7 @@ class VKGet {
         onNeedValidation = onNeedValidation ??
             ((v) async {
               print('Validation needed, but no handler set');
-              return false;
+              return VKGetValidationResult(false);
             });
 
   final String version;
@@ -55,7 +55,7 @@ class VKGet {
   Future<bool> Function() onConnectionProblems =
       () => throw UnimplementedError();
   Future<String> Function(VKGetResponse r) onCaptcha;
-  Future<bool> Function(VKGetResponse r) onNeedValidation;
+  Future<VKGetValidationResult> Function(VKGetResponse r) onNeedValidation;
 
   void Function(VKGetTrace) onRequestStateChange = (VKGetTrace trace) {};
 
@@ -228,6 +228,7 @@ class VKGet {
       var queueLock = false;
       String? lastCaptchaSid;
       String? captchaKey;
+      String? verificationCode;
 
       do {
         queueLock = false;
@@ -249,6 +250,7 @@ class VKGet {
         final body = <String, dynamic>{
           'v': version,
           'access_token': token,
+          if (verificationCode != null) 'code': verificationCode,
           if (lastCaptchaSid != null) 'captcha_sid': lastCaptchaSid,
           if (lastCaptchaSid != null) 'captcha_key': captchaKey,
           ...r.data,
@@ -321,9 +323,12 @@ class VKGet {
             );
 
             try {
-              if (!(await onNeedValidation(result))) {
+              final validationResult = await onNeedValidation(result);
+              if (!validationResult.isValid) {
                 throw Exception(
                     "Validation has been requested but wasn't handled");
+              } else {
+                verificationCode = validationResult.code;
               }
             } catch (e) {
               onRequestStateChange(
