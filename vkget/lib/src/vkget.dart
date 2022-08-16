@@ -472,8 +472,39 @@ class VKGetTrace {
   final String target;
   final Object? payload;
 
+  static List<String> toStringCensoredKeys = [
+    'access_token',
+    'client_secret',
+    'username',
+    'password'
+  ];
+
+  dynamic _censorJson(dynamic json) {
+    if (json is Map) {
+      final censored = Map<String, dynamic>.from(json);
+      for (final key in json.keys) {
+        if (toStringCensoredKeys.contains(key)) {
+          censored[key as String] = '***';
+        } else {
+          censored[key as String] = _censorJson(json[key] as Object);
+        }
+      }
+      return censored;
+    } else if (json is List<dynamic>) {
+      final censored = List<dynamic>.from(json);
+      for (int i = 0; i < json.length; i++) {
+        censored[i] = _censorJson(json[i] as Object);
+      }
+      return censored;
+    }
+
+    return json;
+  }
+
   @override
-  String toString() {
+  String toString() => toStringRepresentation();
+
+  String toStringRepresentation({bool censored = true}) {
     var s = '[VKGet Trace]';
 
     s += ' ';
@@ -517,8 +548,9 @@ class VKGetTrace {
     s += '- $target';
 
     if (payload != null) {
-      s += '\n';
-      s += '- ${jsonEncode(payload)}';
+      s += '\n- ';
+      s += jsonEncode(_censorJson(
+          payload! is String ? jsonDecode(payload! as String) : payload!));
     }
 
     if (statePayload != null) {
@@ -532,7 +564,7 @@ class VKGetTrace {
 
       s += '\n';
       try {
-        s += jsonEncode(r.asJson);
+        s += jsonEncode(_censorJson(jsonDecode(r.body) as Object));
       } catch (e) {
         s += r.body;
       }
