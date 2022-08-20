@@ -9,6 +9,7 @@ class VKGet {
   VKGet(
     this.version,
     this.token, {
+    this.language,
     HttpClient? client,
     this.domain = 'https://api.vk.com',
     this.oauthDomain = 'https://oauth.vk.com',
@@ -46,9 +47,9 @@ class VKGet {
               return VKGetValidationResult(false);
             });
 
-  final String version;
+  final String? language;
   String token;
-  final String domain, oauthDomain, userAgent, errorDetectionKey;
+  final String version, domain, oauthDomain, userAgent, errorDetectionKey;
   final HttpClient client;
   final void Function(dynamic thrown) onError;
   Future<bool> Function() onAccessProblems = () => throw UnimplementedError();
@@ -250,6 +251,7 @@ class VKGet {
         final body = <String, dynamic>{
           'v': version,
           'access_token': token,
+          'lang': language,
           if (verificationCode != null) 'code': verificationCode,
           if (lastCaptchaSid != null) 'captcha_sid': lastCaptchaSid,
           if (lastCaptchaSid != null) 'captcha_key': captchaKey,
