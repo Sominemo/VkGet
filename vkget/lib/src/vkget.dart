@@ -47,7 +47,7 @@ class VKGet {
               return VKGetValidationResult(false);
             });
 
-  final String? language;
+  String? language;
   String token;
   final String version, domain, oauthDomain, userAgent, errorDetectionKey;
   final HttpClient client;
