@@ -73,6 +73,7 @@ class VKGetRequest {
     this.domain,
     this.isOauth,
     this.isTraced,
+    this.lazyInterpretation,
   ) : completer = Completer();
 
   final Completer<VKGetResponse> completer;
@@ -80,6 +81,7 @@ class VKGetRequest {
   final Map<String, dynamic> data;
   final bool isOauth;
   final bool isTraced;
+  final bool lazyInterpretation;
 
   @override
   int get hashCode =>
@@ -87,7 +89,8 @@ class VKGetRequest {
       data.hashCode * 32 +
       domain.hashCode * 33 +
       (isOauth ? 1 : 0) * 34 +
-      (isTraced ? 1 : 0) * 35;
+      (isTraced ? 1 : 0) * 35 +
+      (lazyInterpretation ? 1 : 0) * 36;
 
   @override
   bool operator ==(Object other) {
@@ -98,17 +101,23 @@ class VKGetRequest {
     if (domain != other.domain) return false;
     if (isOauth != other.isOauth) return false;
     if (isTraced != other.isTraced) return false;
+    if (lazyInterpretation != other.lazyInterpretation) return false;
 
     return true;
   }
 }
 
 class VKGetResponse {
-  VKGetResponse(this.response, this.body);
+  VKGetResponse(
+    this.response,
+    this.body,
+    this.allowInterpretation,
+  );
 
   final HttpClientResponse response;
   final String body;
-  dynamic get asJson => jsonDecode(body);
+  final void Function(bool value)? allowInterpretation;
+  dynamic asJson() => jsonDecode(body);
 }
 
 class VKGetValidationResult {

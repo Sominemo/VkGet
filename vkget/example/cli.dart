@@ -54,7 +54,7 @@ Future<VKGetTokenData> getTokenInteractive({String version = '5.130'}) async {
     '',
     onCaptcha: (r) async {
       stdout.writeln(
-          '[?] VK asks you to enter captcha: ${r.asJson['captcha_img']}');
+          '[?] VK asks you to enter captcha: ${r.asJson()['captcha_img']}');
       final input = stdin.readLineSync();
       if (input == null) throw TypeError();
       return (input);
@@ -212,7 +212,7 @@ Future<VKGetTokenData> loginFlow(
                   if (input == 'voice') 'voice': '1',
                 },
               ))
-                  .asJson['delay'] as int,
+                  .asJson()['delay'] as int,
             ),
           );
           print('[?] VK sent you a 2FA code in SMS on ${e['phone_mask']}');
