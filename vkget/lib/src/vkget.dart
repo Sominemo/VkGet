@@ -69,24 +69,29 @@ class VKGet {
     String method,
     Map<String, dynamic> data, {
     bool oauth = false,
+    bool isTraced = true,
   }) {
     final request = VKGetRequest(
       method,
       data,
       (oauth ? oauthDomain : domain),
       oauth,
+      isTraced,
     );
     _cart.add(request);
 
-    onRequestStateChange(
-      VKGetTrace(
-        state: VKGetTraceRequestState.queued,
-        type: (oauth ? VKGetTraceRequestType.oauth : VKGetTraceRequestType.api),
-        request: request,
-        target: method,
-        payload: data,
-      ),
-    );
+    if (isTraced) {
+      onRequestStateChange(
+        VKGetTrace(
+          state: VKGetTraceRequestState.queued,
+          type:
+              (oauth ? VKGetTraceRequestType.oauth : VKGetTraceRequestType.api),
+          request: request,
+          target: method,
+          payload: data,
+        ),
+      );
+    }
 
     _runner();
     return request.completer.future;
@@ -99,6 +104,7 @@ class VKGet {
     String? body,
     Map<String, dynamic>? bodyFields,
     String? overrideUserAgent,
+    bool isTraced = true,
   }) async {
     final failedProxies = <VKProxy?>[];
     final requestHeaders = {
@@ -106,14 +112,15 @@ class VKGet {
     };
     requestHeaders.addAll(headers);
 
-    onRequestStateChange(
-      VKGetTrace(
-        state: VKGetTraceRequestState.active,
-        type: VKGetTraceRequestType.fetch,
-        target: url.toString(),
-        payload: bodyFields ?? body,
-      ),
-    );
+    if (isTraced)
+      onRequestStateChange(
+        VKGetTrace(
+          state: VKGetTraceRequestState.active,
+          type: VKGetTraceRequestType.fetch,
+          target: url.toString(),
+          payload: bodyFields ?? body,
+        ),
+      );
 
     final HttpClientResponse result;
 
@@ -129,15 +136,16 @@ class VKGet {
         bodyFields: bodyFields,
       );
 
-      onRequestStateChange(
-        VKGetTrace(
-          state: VKGetTraceRequestState.done,
-          type: VKGetTraceRequestType.fetch,
-          target: url.toString(),
-          payload: bodyFields ?? body,
-          response: VKGetResponse(result, ''),
-        ),
-      );
+      if (isTraced)
+        onRequestStateChange(
+          VKGetTrace(
+            state: VKGetTraceRequestState.done,
+            type: VKGetTraceRequestType.fetch,
+            target: url.toString(),
+            payload: bodyFields ?? body,
+            response: VKGetResponse(result, ''),
+          ),
+        );
 
       for (final element in failedProxies) {
         proxies.remove(element);
@@ -145,15 +153,16 @@ class VKGet {
 
       return result;
     } catch (e) {
-      onRequestStateChange(
-        VKGetTrace(
-          state: VKGetTraceRequestState.error,
-          type: VKGetTraceRequestType.fetch,
-          target: url.toString(),
-          payload: bodyFields ?? body,
-          statePayload: e,
-        ),
-      );
+      if (isTraced)
+        onRequestStateChange(
+          VKGetTrace(
+            state: VKGetTraceRequestState.error,
+            type: VKGetTraceRequestType.fetch,
+            target: url.toString(),
+            payload: bodyFields ?? body,
+            statePayload: e,
+          ),
+        );
 
       rethrow;
     }
@@ -204,17 +213,18 @@ class VKGet {
         _executeRequest(r, qIndex);
       } catch (e) {
         if (r != null) {
-          onRequestStateChange(
-            VKGetTrace(
-              state: VKGetTraceRequestState.cancelled,
-              type: r.isOauth
-                  ? VKGetTraceRequestType.oauth
-                  : VKGetTraceRequestType.api,
-              target: r.method,
-              payload: r.data,
-              statePayload: e,
-            ),
-          );
+          if (r.isTraced)
+            onRequestStateChange(
+              VKGetTrace(
+                state: VKGetTraceRequestState.cancelled,
+                type: r.isOauth
+                    ? VKGetTraceRequestType.oauth
+                    : VKGetTraceRequestType.api,
+                target: r.method,
+                payload: r.data,
+                statePayload: e,
+              ),
+            );
         }
 
         onError(e);
@@ -235,16 +245,17 @@ class VKGet {
         queueLock = false;
         final failedProxies = <VKProxy?>[];
 
-        onRequestStateChange(
-          VKGetTrace(
-            state: VKGetTraceRequestState.active,
-            type: r.isOauth
-                ? VKGetTraceRequestType.oauth
-                : VKGetTraceRequestType.api,
-            target: r.method,
-            payload: r.data,
-          ),
-        );
+        if (r.isTraced)
+          onRequestStateChange(
+            VKGetTrace(
+              state: VKGetTraceRequestState.active,
+              type: r.isOauth
+                  ? VKGetTraceRequestType.oauth
+                  : VKGetTraceRequestType.api,
+              target: r.method,
+              payload: r.data,
+            ),
+          );
 
         final targetDomain = Uri.parse(r.domain);
 
@@ -281,48 +292,51 @@ class VKGet {
           if (json['error'] == 'need_captcha') {
             lastCaptchaSid = json['captcha_sid'] as String;
 
-            onRequestStateChange(
-              VKGetTrace(
-                state: VKGetTraceRequestState.delayed,
-                type: r.isOauth
-                    ? VKGetTraceRequestType.oauth
-                    : VKGetTraceRequestType.api,
-                target: r.method,
-                payload: body,
-                statePayload: json,
-              ),
-            );
-
-            try {
-              captchaKey = await onCaptcha(result);
-            } catch (e) {
+            if (r.isTraced)
               onRequestStateChange(
                 VKGetTrace(
-                  state: VKGetTraceRequestState.cancelled,
+                  state: VKGetTraceRequestState.delayed,
                   type: r.isOauth
                       ? VKGetTraceRequestType.oauth
                       : VKGetTraceRequestType.api,
                   target: r.method,
                   payload: body,
-                  statePayload: e,
+                  statePayload: json,
                 ),
               );
+
+            try {
+              captchaKey = await onCaptcha(result);
+            } catch (e) {
+              if (r.isTraced)
+                onRequestStateChange(
+                  VKGetTrace(
+                    state: VKGetTraceRequestState.cancelled,
+                    type: r.isOauth
+                        ? VKGetTraceRequestType.oauth
+                        : VKGetTraceRequestType.api,
+                    target: r.method,
+                    payload: body,
+                    statePayload: e,
+                  ),
+                );
               rethrow;
             }
             queueLock = true;
             continue;
           } else if (json['error'] == 'need_validation') {
-            onRequestStateChange(
-              VKGetTrace(
-                state: VKGetTraceRequestState.delayed,
-                type: r.isOauth
-                    ? VKGetTraceRequestType.oauth
-                    : VKGetTraceRequestType.api,
-                target: r.method,
-                payload: body,
-                statePayload: json,
-              ),
-            );
+            if (r.isTraced)
+              onRequestStateChange(
+                VKGetTrace(
+                  state: VKGetTraceRequestState.delayed,
+                  type: r.isOauth
+                      ? VKGetTraceRequestType.oauth
+                      : VKGetTraceRequestType.api,
+                  target: r.method,
+                  payload: body,
+                  statePayload: json,
+                ),
+              );
 
             try {
               final validationResult = await onNeedValidation(result);
@@ -333,17 +347,18 @@ class VKGet {
                 verificationCode = validationResult.code;
               }
             } catch (e) {
-              onRequestStateChange(
-                VKGetTrace(
-                  state: VKGetTraceRequestState.cancelled,
-                  type: r.isOauth
-                      ? VKGetTraceRequestType.oauth
-                      : VKGetTraceRequestType.api,
-                  target: r.method,
-                  payload: body,
-                  statePayload: e,
-                ),
-              );
+              if (r.isTraced)
+                onRequestStateChange(
+                  VKGetTrace(
+                    state: VKGetTraceRequestState.cancelled,
+                    type: r.isOauth
+                        ? VKGetTraceRequestType.oauth
+                        : VKGetTraceRequestType.api,
+                    target: r.method,
+                    payload: body,
+                    statePayload: e,
+                  ),
+                );
               rethrow;
             }
             queueLock = true;
@@ -353,30 +368,32 @@ class VKGet {
 
         if (json is Map<String, dynamic> &&
             json.containsKey(errorDetectionKey)) {
-          onRequestStateChange(
-            VKGetTrace(
-              state: VKGetTraceRequestState.error,
-              type: r.isOauth
-                  ? VKGetTraceRequestType.oauth
-                  : VKGetTraceRequestType.api,
-              target: r.method,
-              payload: body,
-              statePayload: json,
-            ),
-          );
+          if (r.isTraced)
+            onRequestStateChange(
+              VKGetTrace(
+                state: VKGetTraceRequestState.error,
+                type: r.isOauth
+                    ? VKGetTraceRequestType.oauth
+                    : VKGetTraceRequestType.api,
+                target: r.method,
+                payload: body,
+                statePayload: json,
+              ),
+            );
           r.completer.completeError(json);
         } else {
-          onRequestStateChange(
-            VKGetTrace(
-              state: VKGetTraceRequestState.done,
-              type: r.isOauth
-                  ? VKGetTraceRequestType.oauth
-                  : VKGetTraceRequestType.api,
-              target: r.method,
-              payload: body,
-              response: result,
-            ),
-          );
+          if (r.isTraced)
+            onRequestStateChange(
+              VKGetTrace(
+                state: VKGetTraceRequestState.done,
+                type: r.isOauth
+                    ? VKGetTraceRequestType.oauth
+                    : VKGetTraceRequestType.api,
+                target: r.method,
+                payload: body,
+                response: result,
+              ),
+            );
           r.completer.complete(result);
         }
 
@@ -385,6 +402,26 @@ class VKGet {
             if (await VKGetUtils.checkPureInternetConnection()) {
               failedProxies.clear();
             } else {
+              if (r.isTraced)
+                onRequestStateChange(
+                  VKGetTrace(
+                    state: VKGetTraceRequestState.delayed,
+                    type: r.isOauth
+                        ? VKGetTraceRequestType.oauth
+                        : VKGetTraceRequestType.api,
+                    target: r.method,
+                    payload: body,
+                    statePayload: 'Access Problems',
+                  ),
+                );
+
+              if (await onAccessProblems()) {
+                queueLock = true;
+                continue;
+              }
+            }
+          } catch (e) {
+            if (r.isTraced)
               onRequestStateChange(
                 VKGetTrace(
                   state: VKGetTraceRequestState.delayed,
@@ -393,27 +430,9 @@ class VKGet {
                       : VKGetTraceRequestType.api,
                   target: r.method,
                   payload: body,
-                  statePayload: 'Access Problems',
+                  statePayload: 'No Internet',
                 ),
               );
-
-              if (await onAccessProblems()) {
-                queueLock = true;
-                continue;
-              }
-            }
-          } catch (e) {
-            onRequestStateChange(
-              VKGetTrace(
-                state: VKGetTraceRequestState.delayed,
-                type: r.isOauth
-                    ? VKGetTraceRequestType.oauth
-                    : VKGetTraceRequestType.api,
-                target: r.method,
-                payload: body,
-                statePayload: 'No Internet',
-              ),
-            );
 
             // Internet is shit
             failedProxies.clear();
@@ -423,17 +442,18 @@ class VKGet {
                 continue;
               }
             } catch (e) {
-              onRequestStateChange(
-                VKGetTrace(
-                  state: VKGetTraceRequestState.cancelled,
-                  type: r.isOauth
-                      ? VKGetTraceRequestType.oauth
-                      : VKGetTraceRequestType.api,
-                  target: r.method,
-                  payload: body,
-                  statePayload: e,
-                ),
-              );
+              if (r.isTraced)
+                onRequestStateChange(
+                  VKGetTrace(
+                    state: VKGetTraceRequestState.cancelled,
+                    type: r.isOauth
+                        ? VKGetTraceRequestType.oauth
+                        : VKGetTraceRequestType.api,
+                    target: r.method,
+                    payload: body,
+                    statePayload: e,
+                  ),
+                );
               rethrow;
             }
           }
@@ -444,17 +464,18 @@ class VKGet {
         }
       } while (queueLock);
     } catch (e) {
-      onRequestStateChange(
-        VKGetTrace(
-          state: VKGetTraceRequestState.cancelled,
-          type: r.isOauth
-              ? VKGetTraceRequestType.oauth
-              : VKGetTraceRequestType.api,
-          target: r.method,
-          payload: r.data,
-          statePayload: e,
-        ),
-      );
+      if (r.isTraced)
+        onRequestStateChange(
+          VKGetTrace(
+            state: VKGetTraceRequestState.cancelled,
+            type: r.isOauth
+                ? VKGetTraceRequestType.oauth
+                : VKGetTraceRequestType.api,
+            target: r.method,
+            payload: r.data,
+            statePayload: e,
+          ),
+        );
       r.completer.completeError(e);
       rethrow;
     }

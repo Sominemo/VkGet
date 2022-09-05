@@ -72,19 +72,22 @@ class VKGetRequest {
     this.data,
     this.domain,
     this.isOauth,
+    this.isTraced,
   ) : completer = Completer();
 
   final Completer<VKGetResponse> completer;
   final String method, domain;
   final Map<String, dynamic> data;
   final bool isOauth;
+  final bool isTraced;
 
   @override
   int get hashCode =>
       method.hashCode * 31 +
       data.hashCode * 32 +
       domain.hashCode * 33 +
-      (isOauth ? 1 : 0) * 34;
+      (isOauth ? 1 : 0) * 34 +
+      (isTraced ? 1 : 0) * 35;
 
   @override
   bool operator ==(Object other) {
@@ -94,6 +97,7 @@ class VKGetRequest {
     if (data != other.data) return false;
     if (domain != other.domain) return false;
     if (isOauth != other.isOauth) return false;
+    if (isTraced != other.isTraced) return false;
 
     return true;
   }
