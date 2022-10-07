@@ -1,8 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math' show Random;
-import 'dart:convert' show jsonDecode, utf8;
-import 'package:basic_utils/basic_utils.dart' show X509Utils;
+import 'dart:convert' show base64Decode, jsonDecode, utf8;
 import 'package:crypto/crypto.dart' show md5;
 
 import 'types.dart';
@@ -14,6 +13,26 @@ class VKProxyList {
 }
 
 class VKGetUtils {
+  static String getPemMd5Hash(String pem) {
+    final lines = pem
+        .split(RegExp(r'\r?\n', multiLine: true))
+        .map((line) => line.trim())
+        .where((line) => line.isNotEmpty)
+        .toList();
+
+    String base64;
+    if (lines.length > 2 && lines.first.startsWith('-----BEGIN') ||
+        lines.last.startsWith('-----END')) {
+      base64 = lines.sublist(1, lines.length - 1).join('');
+    } else {
+      base64 = lines.join('');
+    }
+
+    final bytes = base64Decode(base64);
+    final hash = md5.convert(bytes).toString();
+    return hash.toUpperCase();
+  }
+
   static void proxify(HttpClient client, List<VKProxy> list) {
     final pac =
         list.where((element) => element.type == VKProxyType.httpRfc).join('; ');
@@ -25,8 +44,7 @@ class VKGetUtils {
       Set<VKProxyCertificate> certificates, HttpClient client) {
     if (certificates.isNotEmpty) {
       client.badCertificateCallback = (certificate, domain, port) {
-        final hash =
-            X509Utils.x509CertificateFromPem(certificate.pem).md5Thumbprint;
+        final hash = getPemMd5Hash(certificate.pem);
 
         return certificates.any((cert) {
           if (cert.type == VKProxyCertificateType.pem) {
@@ -281,8 +299,7 @@ class VKGetUtils {
       certs = certsList
           .map((dynamic element) => VKProxyCertificate(
                 VKProxyCertificateType.pem,
-                X509Utils.x509CertificateFromPem(element['cert'] as String)
-                    .md5Thumbprint,
+                getPemMd5Hash(element['cert'] as String),
               ))
           .toSet();
     } catch (e) {
