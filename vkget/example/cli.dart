@@ -59,6 +59,7 @@ Future<VKGetTokenData> getTokenInteractive({String version = '5.130'}) async {
       if (input == null) throw TypeError();
       return (input);
     },
+    specialValidationHandling: false,
   );
 
   stdout.writeln('[*] Connecting to VK...');
@@ -135,7 +136,8 @@ Future<VKGetTokenData> loginFlow(
   try {
     final oauth = await vk.call('token', requestBody, oauth: true);
 
-    final Map<String, dynamic> oauthRes = oauth.asJson as Map<String, dynamic>;
+    final Map<String, dynamic> oauthRes =
+        oauth.asJson() as Map<String, dynamic>;
 
     final String accessToken = oauthRes['access_token'] as String;
     if (oauthRes['access_token'] == null) throw TypeError();
@@ -180,7 +182,7 @@ Future<VKGetTokenData> loginFlow(
 
       vk.token = userToken;
       final dynamic checkTokenCall =
-          (await vk.call('users.get', <String, String>{})).asJson;
+          (await vk.call('users.get', <String, String>{})).asJson();
       vk.token = '';
 
       if (checkTokenCall is! Map<String, dynamic>) throw TypeError();

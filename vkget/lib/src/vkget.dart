@@ -20,6 +20,7 @@ class VKGet {
     Future<bool> Function()? onConnectionProblems,
     Future<String> Function(VKGetResponse)? onCaptcha,
     Future<VKGetValidationResult> Function(VKGetResponse)? onNeedValidation,
+    this.specialValidationHandling = true,
   })  : client = client ?? HttpClient(),
         onError = onError ??
             ((dynamic v) {
@@ -57,6 +58,7 @@ class VKGet {
       () => throw UnimplementedError();
   Future<String> Function(VKGetResponse r) onCaptcha;
   Future<VKGetValidationResult> Function(VKGetResponse r) onNeedValidation;
+  bool specialValidationHandling;
 
   void Function(VKGetTrace) onRequestStateChange = (VKGetTrace trace) {};
 
@@ -335,7 +337,8 @@ class VKGet {
               }
               queueLock = true;
               return;
-            } else if (json['error'] == 'need_validation') {
+            } else if (json['error'] == 'need_validation' &&
+                specialValidationHandling) {
               if (r.isTraced) {
                 onRequestStateChange(
                   VKGetTrace(
